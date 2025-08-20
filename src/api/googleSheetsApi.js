@@ -1,4 +1,4 @@
-const API_BASE_URL = "https://script.google.com/macros/s/AKfycbwflnbb-et0PMgUn30EYoAiFGw_Y0tZ9TASNDQb2_WFD3PiVFq0PVqjYPrQdDMB42We1Q/exec"; // Replace with your deployed Apps Script web app URL
+const API_BASE_URL = "https://script.google.com/macros/library/d/1tpZETI0o0uNcWXz2LxadY6SJK7p4r_b5PZJ1-Sa32vGlbT0Bzg7rQnHd/4"; // Replace with your deployed Apps Script web app URL
 
 export async function saveData(data) {
   const response = await fetch(API_BASE_URL, {
