@@ -1,0 +1,7 @@
+Deployment ID
+
+AKfycbwflnbb-et0PMgUn30EYoAiFGw_Y0tZ9TASNDQb2_WFD3PiVFq0PVqjYPrQdDMB42We1Q
+
+Web app
+
+https://script.google.com/macros/s/AKfycbwflnbb-et0PMgUn30EYoAiFGw_Y0tZ9TASNDQb2_WFD3PiVFq0PVqjYPrQdDMB42We1Q/exec
