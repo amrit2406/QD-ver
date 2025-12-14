@@ -1,5 +1,6 @@
 const PROXY_URL = "/api/proxy";
 
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxoYTLLb8XoLGizs95X0t0foMLY0_PS65qpLHGDamItB0TDsTapKASt273lxZrWpgNJ/exec";
 export const getQuotations = async () => {
   return new Promise((resolve, reject) => {
     const script = document.createElement('script');
