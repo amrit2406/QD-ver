@@ -1,5 +1,4 @@
-// Google Apps Script Web App Integration
-// No Google Cloud Console needed!
+// Google Apps Script Web App Integration - CORS Fixed Version
 
 const SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxyTOwtKq7hSXR2oIAO1Yug_YNGRn9AeMEeWAElgEkxmImaup15cdhDn1bDQ0lIY2I/exec'; // Paste your Apps Script URL here
 
@@ -9,19 +8,16 @@ class GoogleSheetsService {
     this.scriptUrl = localStorage.getItem('googleScriptUrl') || SCRIPT_URL;
   }
 
-  // Set the script URL
   setScriptUrl(url) {
     this.scriptUrl = url;
     localStorage.setItem('googleScriptUrl', url);
     this.initialized = true;
   }
 
-  // Check if configured
   isConfigured() {
     return this.scriptUrl && this.scriptUrl !== 'https://script.google.com/macros/s/AKfycbxyTOwtKq7hSXR2oIAO1Yug_YNGRn9AeMEeWAElgEkxmImaup15cdhDn1bDQ0lIY2I/exec';
   }
 
-  // Initialize the service
   async initialize() {
     this.initialized = this.isConfigured();
     return this.initialized;
@@ -31,23 +27,23 @@ class GoogleSheetsService {
   async saveDocument(type, data) {
     try {
       if (!this.isConfigured()) {
-        // Fallback to localStorage
         return this.saveToLocalStorage(type, data);
       }
 
-      const response = await fetch(`${this.scriptUrl}?action=save&type=${type}`, {
-        method: 'POST',
-        body: new URLSearchParams({
-          action: 'save',
-          type: type,
-          data: JSON.stringify(data)
-        })
+      const url = `${this.scriptUrl}?action=save&type=${type}&data=${encodeURIComponent(JSON.stringify(data))}`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        redirect: 'follow'
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
       const result = await response.json();
       
       if (result.success) {
-        // Also save to localStorage as backup
         this.saveToLocalStorage(type, data);
         return result.document;
       } else {
@@ -66,11 +62,21 @@ class GoogleSheetsService {
         return this.getFromLocalStorage(type);
       }
 
-      const response = await fetch(`${this.scriptUrl}?action=getAll&type=${type}`);
+      const typeParam = type || 'all';
+      const url = `${this.scriptUrl}?action=getAll&type=${typeParam}`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        redirect: 'follow'
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const result = await response.json();
       
       if (result.success) {
-        // Merge with localStorage
         const localDocs = this.getFromLocalStorage(type);
         const mergedDocs = this.mergeDocuments(result.documents, localDocs);
         return mergedDocs;
@@ -90,7 +96,17 @@ class GoogleSheetsService {
         return this.getByIdFromLocalStorage(id);
       }
 
-      const response = await fetch(`${this.scriptUrl}?action=getById&id=${id}`);
+      const url = `${this.scriptUrl}?action=getById&id=${id}`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        redirect: 'follow'
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const result = await response.json();
       
       if (result.success) {
@@ -111,17 +127,19 @@ class GoogleSheetsService {
         return this.deleteFromLocalStorage(id);
       }
 
-      const response = await fetch(`${this.scriptUrl}?action=delete&id=${id}`, {
-        method: 'POST',
-        body: new URLSearchParams({
-          action: 'delete',
-          id: id
-        })
+      const url = `${this.scriptUrl}?action=delete&id=${id}`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        redirect: 'follow'
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
       const result = await response.json();
       
-      // Also delete from localStorage
       this.deleteFromLocalStorage(id);
       
       return result.success;
@@ -138,21 +156,22 @@ class GoogleSheetsService {
         return this.updateInLocalStorage(id, updates);
       }
 
-      const response = await fetch(`${this.scriptUrl}?action=update`, {
-        method: 'POST',
-        body: new URLSearchParams({
-          action: 'update',
-          id: id,
-          updates: JSON.stringify(updates)
-        })
+      const url = `${this.scriptUrl}?action=update&id=${id}&updates=${encodeURIComponent(JSON.stringify(updates))}`;
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        redirect: 'follow'
       });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
       const result = await response.json();
       
-      // Also update localStorage
       this.updateInLocalStorage(id, updates);
       
-      return result.document;
+      return result.document || this.getByIdFromLocalStorage(id);
     } catch (error) {
       console.error('Error updating document:', error);
       return this.updateInLocalStorage(id, updates);
@@ -181,7 +200,14 @@ class GoogleSheetsService {
       return stats;
     } catch (error) {
       console.error('Error fetching statistics:', error);
-      return null;
+      return {
+        total: 0,
+        quotations: 0,
+        proposals: 0,
+        invoices: 0,
+        totalRevenue: 0,
+        thisMonth: 0
+      };
     }
   }
 
@@ -202,7 +228,7 @@ class GoogleSheetsService {
     URL.revokeObjectURL(url);
   }
 
-  // ===== LOCAL STORAGE FALLBACK METHODS =====
+  // ===== LOCAL STORAGE METHODS =====
 
   saveToLocalStorage(type, data) {
     const documents = JSON.parse(localStorage.getItem('documents') || '[]');
@@ -272,5 +298,4 @@ class GoogleSheetsService {
   }
 }
 
-// Export singleton instance
 export const googleSheetsAPI = new GoogleSheetsService();
