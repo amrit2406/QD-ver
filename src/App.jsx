@@ -1,76 +1,215 @@
-import { useState, useEffect } from 'react';
-import QuotationForm from './components/QuotationForm';
-import QuotationList from './components/QuotationList';
-import BillForm from './components/BillForm';
-import BillList from './components/BillList';
-import { getQuotations } from './services/appsScript';
+import React, { useState, useRef, useEffect } from 'react';
+import HomePage from './components/HomePage';
+import ViewDocuments from './components/ViewDocuments';
+import ServiceSelection from './components/ServiceSelection';
+import AddonsPage from './components/AddonsPage';
+import CustomerDetails from './components/CustomerDetails';
+import DocumentSummary from './components/DocumentSummary';
+import { SERVICES } from './data/services';
+import { googleSheetsAPI } from './services/googleSheetsAPI';
 
 function App() {
-  const [quotations, setQuotations] = useState([]);
-  const [activeTab, setActiveTab] = useState('quotations');
+  // Page navigation state
+  const [page, setPage] = useState('home');
+  const [documentType, setDocumentType] = useState(null);
+  const [step, setStep] = useState('services');
 
+  // Cart and service selection state
+  const [cart, setCart] = useState([]);
+  const [currentService, setCurrentService] = useState(null);
+  const [selectedAddons, setSelectedAddons] = useState([]);
+
+  // Customer details state
+  const [customerDetails, setCustomerDetails] = useState({
+    name: '',
+    businessName: '',
+    email: '',
+    notes: ''
+  });
+
+  // Document viewing state
+  const [viewingDocument, setViewingDocument] = useState(null);
+
+  // Reference for PDF generation
+  const summaryRef = useRef(null);
+
+  // Initialize Google Sheets API on mount
   useEffect(() => {
-    const fetchQuotations = async () => {
-      try {
-        const data = await getQuotations();
-        setQuotations(data);
-      } catch (error) {
-        console.error('Error fetching quotations:', error);
-      }
-    };
-
-    fetchQuotations();
+    googleSheetsAPI.initialize();
   }, []);
 
+  // Navigation handler
+  const handleNavigate = (destination) => {
+    if (destination.startsWith('view-')) {
+      // Extract document type from 'view-quotations' -> 'quotation'
+      const type = destination.replace('view-', '').slice(0, -1);
+      setDocumentType(type);
+      setPage('view');
+      setViewingDocument(null);
+    } else {
+      // Create new document
+      setDocumentType(destination);
+      setPage('create');
+      setStep('services');
+      resetCart();
+    }
+  };
+
+  // Service selection handler
+  const handleServiceSelect = (service) => {
+    setCurrentService(service);
+    setSelectedAddons([]);
+    setStep('addons');
+  };
+
+  // Toggle addon selection
+  const toggleAddon = (addon) => {
+    setSelectedAddons(prev => 
+      prev.find(a => a.id === addon.id) 
+        ? prev.filter(a => a.id !== addon.id) 
+        : [...prev, addon]
+    );
+  };
+
+  // Add service with addons to cart
+  const addToCart = () => {
+    const newItem = {
+      id: Date.now(),
+      service: currentService,
+      addons: selectedAddons,
+      total: currentService.basePrice + selectedAddons.reduce((sum, addon) => sum + addon.price, 0)
+    };
+    
+    setCart([...cart, newItem]);
+    setCurrentService(null);
+    setSelectedAddons([]);
+    setStep('services');
+  };
+
+  // Remove item from cart
+  const removeFromCart = (itemId) => {
+    setCart(cart.filter(item => item.id !== itemId));
+  };
+
+  // Calculate grand total
+  const getGrandTotal = () => {
+    return cart.reduce((sum, item) => sum + item.total, 0);
+  };
+
+  // Reset cart and form
+  const resetCart = () => {
+    setCart([]);
+    setCustomerDetails({
+      name: '',
+      businessName: '',
+      email: '',
+      notes: ''
+    });
+    setCurrentService(null);
+    setSelectedAddons([]);
+  };
+
+  // Reset to home page
+  const resetToHome = () => {
+    setPage('home');
+    setDocumentType(null);
+    setStep('services');
+    resetCart();
+    setViewingDocument(null);
+  };
+
+  // View document details
+  const handleViewDocument = (doc) => {
+    setViewingDocument(doc);
+  };
+
+  // Go back from viewing document
+  const handleBackFromDocument = () => {
+    setViewingDocument(null);
+  };
+
   return (
-    <div className="min-h-screen bg-gray-100 py-8">
-      <div className="max-w-6xl mx-auto px-4">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Quotation & Bill Manager</h1>
-          <p className="text-gray-600 mt-2">Manage your quotations and bills with Google Sheets</p>
-        </header>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-6">
+      {/* HOME PAGE */}
+      {page === 'home' && (
+        <HomePage onNavigate={handleNavigate} />
+      )}
 
-        <div className="bg-white rounded-lg shadow">
-          <div className="border-b border-gray-200">
-            <nav className="flex -mb-px">
-              <button
-                onClick={() => setActiveTab('quotations')}
-                className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
-                  activeTab === 'quotations'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Quotations
-              </button>
-              <button
-                onClick={() => setActiveTab('bills')}
-                className={`py-4 px-6 text-center border-b-2 font-medium text-sm ${
-                  activeTab === 'bills'
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                Bills
-              </button>
-            </nav>
-          </div>
+      {/* VIEW DOCUMENTS PAGE */}
+      {page === 'view' && !viewingDocument && (
+        <ViewDocuments 
+          type={documentType} 
+          onBack={resetToHome}
+          onView={handleViewDocument}
+        />
+      )}
 
-          <div className="p-6">
-            {activeTab === 'quotations' ? (
-              <>
-                <QuotationForm />
-                <QuotationList />
-              </>
-            ) : (
-              <>
-                <BillForm quotations={quotations} />
-                <BillList />
-              </>
-            )}
-          </div>
+      {/* VIEW SINGLE DOCUMENT */}
+      {page === 'view' && viewingDocument && (
+        <div className="max-w-5xl mx-auto">
+          <button 
+            onClick={handleBackFromDocument}
+            className="text-indigo-600 hover:underline mb-4 font-medium"
+          >
+            ← Back to List
+          </button>
+          <DocumentSummary
+            ref={summaryRef}
+            type={viewingDocument.type}
+            cart={viewingDocument.cart}
+            customerDetails={viewingDocument.customerDetails}
+            grandTotal={viewingDocument.grandTotal}
+            onBack={resetToHome}
+            summaryRef={summaryRef}
+          />
         </div>
-      </div>
+      )}
+
+      {/* CREATE DOCUMENT - SERVICE SELECTION */}
+      {page === 'create' && step === 'services' && (
+        <ServiceSelection 
+          services={SERVICES}
+          onServiceSelect={handleServiceSelect}
+          cart={cart}
+          onRemoveItem={removeFromCart}
+          onProceed={() => setStep('customer')}
+          onBack={resetToHome}
+        />
+      )}
+
+      {/* CREATE DOCUMENT - ADDONS PAGE */}
+      {page === 'create' && step === 'addons' && currentService && (
+        <AddonsPage 
+          service={currentService}
+          selectedAddons={selectedAddons}
+          onToggleAddon={toggleAddon}
+          onAddToCart={addToCart}
+          onBack={() => setStep('services')}
+        />
+      )}
+
+      {/* CREATE DOCUMENT - CUSTOMER DETAILS */}
+      {page === 'create' && step === 'customer' && (
+        <CustomerDetails 
+          customerDetails={customerDetails}
+          onUpdateDetails={setCustomerDetails}
+          onBack={() => setStep('services')}
+          onProceed={() => setStep('summary')}
+        />
+      )}
+
+      {/* CREATE DOCUMENT - SUMMARY */}
+      {page === 'create' && step === 'summary' && (
+        <DocumentSummary 
+          ref={summaryRef}
+          type={documentType}
+          cart={cart}
+          customerDetails={customerDetails}
+          grandTotal={getGrandTotal()}
+          onBack={resetToHome}
+          summaryRef={summaryRef}
+        />
+      )}
     </div>
   );
 }
