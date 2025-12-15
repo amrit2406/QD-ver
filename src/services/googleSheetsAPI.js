@@ -18,7 +18,7 @@ class GoogleSheetsService {
 
   // Check if configured
   isConfigured() {
-    return this.scriptUrl && this.scriptUrl !== 'YOUR_WEB_APP_URL_HERE';
+    return this.scriptUrl && this.scriptUrl !== 'https://script.google.com/macros/s/AKfycbxyTOwtKq7hSXR2oIAO1Yug_YNGRn9AeMEeWAElgEkxmImaup15cdhDn1bDQ0lIY2I/exec';
   }
 
   // Initialize the service
