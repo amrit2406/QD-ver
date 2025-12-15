@@ -44,10 +44,10 @@ export default function QuotationPage() {
 };
 
   const handleConfirm = async () => {
-  // Update pricing in context first
+  // 1️⃣ Update pricing in context first
   dispatch({ type: 'UPDATE_PRICING', payload: { gst, discount, discountType } });
 
-  // Prepare payload for Google Sheets
+  // 2️⃣ Prepare payload for Google Sheets
   const payload = {
     ID: state.customer.id || crypto.randomUUID(),
     Name: state.customer.name,
@@ -63,29 +63,28 @@ export default function QuotationPage() {
   };
 
   try {
-    const res = await fetch('https://script.google.com/macros/s/AKfycbwuCj9Qc9iVpXVQ3zPud9ZGcXCJ7uoVnoMV-RFirNaVvRzhvhoTvT65I9jB5YaUg8xe/exec', {
+    // ✅ Replace your old fetch call with this
+    const res = await fetch('/api/saveQuotation', {
       method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload)
     });
 
     const data = await res.json();
 
     if (data.status === 'success') {
-      // Update confirmed state in context
       dispatch({ type: 'CONFIRM_QUOTATION' });
-
       alert('Quotation saved successfully!');
-
-      // Navigate to final bill
       navigate('/bill');
     } else {
       alert('Failed to save quotation. Please try again.');
     }
   } catch (err) {
-    console.error('Error saving to Google Sheets:', err);
-    alert('Error saving to Google Sheets. Check console.');
+    console.error('Error saving quotation:', err);
+    alert('Error saving quotation. Check console.');
   }
 };
+
 
 
   const downloadPDF = () => {
